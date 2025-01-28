@@ -134,3 +134,64 @@ table = pd.read_html('https://sca-programming-school.github.io/city_development_
 city = table[0]
 ```
 So we have written a cycle to automatically extract data from many different data sources. And every day, according to the set time, the system will automatically access the above links to automatically retrieve and update new data (if any), without having to manually edit when there are changes to the original data.
+
+### 2. Transform the data
+Now we need to handle missing values (NA) in the dataset. How to handle these values ​​specifically as follows:
+- Check all columns in all data tables to detect NA values.
+- If there is a NA value in a column, proceed to examine the data type of that column to handle as follows:
+  + If it is a numeric column, fill the NA value with median
+  + If it is an object column or a category column, fill NA with "Unknown"
+```python
+# Write function to clean and transform data
+def handling_missing_value(df):
+  for col in df.columns:
+    if df[col].isna().sum() > 0:
+      if pd.api.types.is_numeric_dtype(df[col]):
+        df[col].fillna(df[col].median(), inplace=True)
+      elif pd.api.types.is_object_dtype(df[col]) or pd.api.types.is_categorical_dtype(df[col]):
+        df[col].fillna('Unknown', inplace=True)
+        df[col] = df[col].str.lower()
+  return df
+
+# Create a dictionary to store all of the tables in the dataset
+data_tables = {
+  'enrollies': df,
+  'enrollies_edu': enrollies_education,
+  'work_exp': work_experience,
+  'training_hours': training_hours,
+  'employment': employment,
+  'city': city
+}
+# Run a for loop to handling missing values in six above data tables
+for table_name, data_frame in data_tables.items():
+  data_tables[table_name] = handling_missing_value(data_frame)
+```
+### 3. Load the data to data warehouse
+After transforming the dataset, we will load it to a data warehouse to store and utilize for analysis later. To keep things simple, I created a SQL Lite database on Dbeaver (which acts as a data warehouse) and this is where I will store all my datasets.
+```python
+# Path to the SQLite database
+db_path = r'C:\Users\LoanVo\Documents\DBeaver\data_warehouse.db'
+# Create an SQL Alchemy engine
+engine_2 = create_engine(f'sqlite:///{db_path}')
+
+df.to_sql('Dim_enrollies', con=engine_2, if_exists='replace', index=False)
+enrollies_education.to_sql('Dim_education', con=engine_2, if_exists='replace', index=False)
+work_experience.to_sql('Dim_experience', con=engine_2, if_exists='replace', index=False)
+training_hours.to_sql('Dim_training', con=engine_2, if_exists='replace', index=False)
+city.to_sql('Dim_city', con=engine_2, if_exists='replace', index=False)
+employment.to_sql('Fact_employment', con=engine_2, if_exists='replace', index=False)
+```
+### 4. Task schedulling
+So we have completed a piece of code to run the ETL cycle. The last thing is to set up a schedule so that the system can automatically get data from sources at a predetermined time. I am using Windows so I chose Task Scheduler to perform this task, specifically as follows:
+- Open Task Scheduler: search for "Task Scheduler" in Start menu and open it.
+- Create a New Task:
+  - In the right-hand pane, click on "Create Basic Task"
+  - Give your task a name and description, then click "Next"
+- Trigger the Task:
+  - Select "Daily" and click "Next"
+  - Set the start date and time, and specify that the task should recur every day.
+- Action:
+  - Select "Start a Program" and click "Next"
+  - Click "Browse" and select the Python executable
+  - In the "Add arguments (optional)" field, enter the path to your ETL script.
+- Finish the Task: Review your settings and click "Finish".
