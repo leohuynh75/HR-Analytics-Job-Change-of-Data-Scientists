@@ -86,4 +86,51 @@ Now let's move to the ETL process.
 ## ETL (Extract - Transform - Load)
 To perform the ETL process, I wrote a piece of code for the computer to automatically perform these cycles on Visual Studio Code, including steps such as: extracting data from sources, converting data and finally uploading data to an existing data warehouse. Specifically as follows:
 ### 1. Extracting the data
+Firstly, we need to import some packages to operate the code
+```python
+import os
+import pandas as pd
+import requests
+from sqlalchemy import create_engine
+import pymysql
+```
+Depending on the IDE you are using, if you encounter any errors while coding due to missing libraries, you can refer to the attached file "requirements.txt", where I have listed all the libraries used in this project (you may not need to install all the libraries here, you just need to debug the error and install according to the system's requirements). The syntax to install a library is:
+```python
+pip install (name of library)
+```
+Once we have all of the necessary libraries and packages, we can write a piece of code to extract automatically from the data sources.
+```python
+# Load data from the google sheets
+gg_sheet_id_1 = '1VCkHwBjJGRJ21asd9pxW4_0z2PWuKhbLR3gUHm-p4GI'
+url_1 = 'https://docs.google.com/spreadsheets/d/' + gg_sheet_id_1 + '/export?format=xlsx'
+df = pd.read_excel(url_1, sheet_name='enrollies')
 
+# Download and open the excel file
+excel_url = 'https://assets.swisscoding.edu.vn/company_course/enrollies_education.xlsx'
+# Check if the file has been downloaded, if so then no need to download again.
+if not os.path.exists('enrollies_education.xlsx'):
+  excel_response = requests.get(excel_url.strip())
+  with open('enrollies_education.xlsx', 'wb') as file:
+    file.write(excel_response.content)
+enrollies_education = pd.read_excel('enrollies_education.xlsx')
+
+# Download and open the csv file
+csv_url = 'https://assets.swisscoding.edu.vn/company_course/work_experience.csv'
+if not os.path.exists('work_experience,csv'):
+  csv_response = requests.get(csv_url)
+  with open('work_experience.csv', 'wb') as file:
+    file.write(csv_response.content)
+work_experience = pd.read_csv('work_experience.csv')
+
+# Load data from database
+engine = create_engine('mysql+pymysql://etl_practice:550814@112.213.86.31:3360/company_course')
+training_hours = pd.read_sql_table('training_hours', con=engine)
+
+engine_1 = create_engine('mysql+pymysql://etl_practice:550814@112.213.86.31:3360/company_course')
+employment = pd.read_sql_table('employment', con=engine_1)
+
+# Load data from website
+table = pd.read_html('https://sca-programming-school.github.io/city_development_index/index.html')
+city = table[0]
+```
+So we have written a cycle to automatically extract data from many different data sources. And every day, according to the set time, the system will automatically access the above links to automatically retrieve and update new data (if any), without having to manually edit when there are changes to the original data.
